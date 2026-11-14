@@ -453,7 +453,7 @@ input:focus{outline:none;border-color:var(--go)}
     shoes: { e: '👟🧥', t: 'On met les chaussures et le manteau', s: 'Quand %M arrive à la voiture, on part.',          v: 'C’est l’heure de mettre les chaussures et le manteau.' },
     go:    { e: '🚗',   t: 'C’est l’heure de partir !',       s: 'Bonne journée !',                                 v: 'C’est l’heure de partir ! Bonne journée !' }
   };
-  var view = null;
+  var view = null, zone = null;
 
   function tick(fromTap) {
     var n = now();
@@ -473,11 +473,20 @@ input:focus{outline:none;border-color:var(--go)}
           return '<button data-id="' + esc(s.id) + '" aria-label="' + esc(s.t) + ' : annuler">' + esc(s.e) + '</button>';
         }).join('');
         if (!first) {
-          say(c.v);
-          if (!fromTap) chime(v === 'go' ? [784, 659, 784, 1047] : [784, 659]);
+          if (fromTap) say(c.v);
           if (v === 'play') burst(window.innerWidth / 2, window.innerHeight / 2, 28);
         }
       }
+    }
+    /* Signal sonore quand on entre dans l'orange, puis à l'heure du départ,
+       même si toutes les étapes ne sont pas finies */
+    var z = rm <= 0 ? 'go' : rm <= S.buffer ? 'shoes' : 'ok';
+    if (z !== zone) {
+      if (zone !== null && z !== 'ok' && !fromTap) {
+        chime(z === 'go' ? [784, 659, 784, 1047, 784, 1047] : [880, 660, 880, 660, 880, 660]);
+        say(VIEWS[z].v);
+      }
+      zone = z;
     }
     drawTrack(rm);
   }
@@ -593,6 +602,19 @@ input:focus{outline:none;border-color:var(--go)}
     }
     gear.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   })();
+
+  /* iPad : le son et la voix ne marchent qu'après un premier toucher sur l'écran */
+  function unlock() {
+    document.removeEventListener('touchend', unlock, true);
+    document.removeEventListener('click', unlock, true);
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) { if (!actx) actx = new AC(); if (actx.state === 'suspended') actx.resume(); }
+      if (canSpeak) { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }
+    } catch (e) {}
+  }
+  document.addEventListener('touchend', unlock, true);
+  document.addEventListener('click', unlock, true);
 
   /* ---------- Démarrage ---------- */
   renderSteps();
