@@ -176,14 +176,6 @@ input:focus{outline:none;border-color:var(--go)}
 .picker button{width:44px;height:44px;font-size:26px;border-radius:12px}
 .picker button:active{background:var(--sky-top)}
 .picker button.sel{background:var(--go-soft);box-shadow:inset 0 0 0 3px var(--go)}
-#f-voices{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
-#f-voices li{display:flex;align-items:center;gap:8px;background:#fff;border-radius:18px;padding:8px 8px 8px 12px;border:2px solid var(--line)}
-#f-voices .e{font-size:24px;flex:0 0 auto}
-#f-voices .t{flex:1 1 0;min-width:0;font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#f-voices .btn{min-height:42px;padding:0 14px;font-size:14px;flex:0 0 auto}
-#f-voices .btn.sq{width:42px;padding:0}
-.btn.rec{background:#C2412D;border-color:#C2412D;color:#fff;animation:blink 1s ease-in-out infinite}
-@keyframes blink{50%{opacity:.6}}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:800;font-size:15px;padding:6px 0}
 .switch input{-webkit-appearance:none;appearance:none;width:56px;height:32px;border-radius:999px;background:rgba(59,47,74,.2);position:relative;transition:background .2s;flex:0 0 auto;margin:0}
 .switch input::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
@@ -350,101 +342,6 @@ input:focus{outline:none;border-color:var(--go)}
     } catch (e) {}
   }
 
-  /* ---------- Voix enregistrée par le parent ----------
-     Les enregistrements sont gardés dans le navigateur de cet appareil (IndexedDB).
-     Ils ne sont envoyés nulle part. */
-  var raw = {}, bufs = {}, playing = null, dbp = null;
-  var canRecord = !!(window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.indexedDB);
-  function db() {
-    if (!dbp) dbp = new Promise(function (res, rej) {
-      var r = indexedDB.open('monmatin', 1);
-      r.onupgradeneeded = function () { r.result.createObjectStore('voices'); };
-      r.onsuccess = function () { res(r.result); };
-      r.onerror = function () { rej(r.error); };
-    });
-    return dbp;
-  }
-  function idb(mode, fn) {
-    return db().then(function (d) {
-      return new Promise(function (res, rej) {
-        var tx = d.transaction('voices', mode), rq = fn(tx.objectStore('voices'));
-        tx.oncomplete = function () { res(rq && rq.result); };
-        tx.onerror = tx.onabort = function () { rej(tx.error); };
-      });
-    });
-  }
-  function loadRecs() {
-    if (!window.indexedDB) return Promise.resolve();
-    var keys;
-    return idb('readonly', function (st) { return st.getAllKeys(); })
-      .then(function (k) { keys = k || []; return idb('readonly', function (st) { return st.getAll(); }); })
-      .then(function (vals) { keys.forEach(function (k, i) { raw[k] = vals[i]; }); })
-      .catch(function () {});
-  }
-  function delRec(key) {
-    delete raw[key]; delete bufs[key];
-    if (window.indexedDB) idb('readwrite', function (st) { return st.delete(key); }).catch(function () {});
-  }
-  function audio() {
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return null;
-    if (!actx) actx = new AC();
-    if (actx.state !== 'running') { try { actx.resume(); } catch (e) {} }
-    return actx;
-  }
-  function playRec(key, delay) {
-    var ctx = audio();
-    if (!ctx || !raw[key]) return;
-    var go = function (buf) {
-      bufs[key] = buf;
-      if (playing) { try { playing.stop(); } catch (e) {} }
-      var src = ctx.createBufferSource();
-      src.buffer = buf; src.connect(ctx.destination);
-      src.start(ctx.currentTime + (delay || 0));
-      playing = src;
-    };
-    if (bufs[key]) go(bufs[key]);
-    else ctx.decodeAudioData(raw[key].slice(0), go, function () { toast('Enregistrement illisible'); });
-  }
-  /* Dit une phrase : l'enregistrement du parent s'il existe, sinon la voix de l'appareil */
-  function speak(key, text, delay) {
-    if (!S.voice) return;
-    if (raw[key]) playRec(key, delay);
-    else if (delay) setTimeout(function () { say(text); }, delay * 1000);
-    else say(text);
-  }
-
-  var stream = null, recorder = null, recKey = null, recTimer = null;
-  function stopStream() {
-    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
-  }
-  function stopRec() { if (recorder && recorder.state !== 'inactive') recorder.stop(); }
-  function startRec(key) {
-    if (recorder) return;
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (st) {
-      stream = st;
-      var chunks = [];
-      try { recorder = new MediaRecorder(stream); } catch (e) { stopStream(); toast('Enregistrement impossible'); return; }
-      recKey = key;
-      recorder.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-      recorder.onstop = function () {
-        var k = recKey, type = recorder.mimeType || (chunks[0] && chunks[0].type) || '';
-        recorder = null; recKey = null; clearTimeout(recTimer);
-        stopStream();   // on rend le micro tout de suite (sinon l'iPad joue le son tout bas)
-        var fr = new FileReader();
-        fr.onload = function () {
-          raw[k] = fr.result; delete bufs[k];
-          idb('readwrite', function (st) { return st.put(fr.result, k); }).catch(function () { toast('Enregistrement non sauvegardé'); });
-          renderVoices();
-        };
-        fr.readAsArrayBuffer(new Blob(chunks, { type: type }));
-      };
-      recorder.start();
-      recTimer = setTimeout(stopRec, 8000);
-      renderVoices();
-    }).catch(function () { toast('Micro refusé : il faut l’autoriser pour enregistrer'); });
-  }
-
   /* ---------- Confettis ---------- */
   function burst(x, y, n) {
     var fx = $('fx'), bits = ['⭐', '✨', '🌟', '💛'];
@@ -477,7 +374,7 @@ input:focus{outline:none;border-color:var(--go)}
       if (d) cls += ' done'; else if (!nextFound) { cls += ' next'; nextFound = true; }
       html += '<div class="' + cls + '" role="button" tabindex="0" aria-pressed="' + d + '" data-id="' + esc(s.id) + '">' +
         '<span class="num">' + (i + 1) + '</span>' +
-        (S.voice && (canSpeak || raw['step:' + s.id]) ? '<button class="say" data-say="' + esc(s.id) + '" aria-label="Écouter">🔊</button>' : '') +
+        (S.voice && canSpeak ? '<button class="say" data-say="' + esc(s.id) + '" aria-label="Écouter">🔊</button>' : '') +
         '<span class="emo">' + esc(s.e) + '</span>' +
         '<span class="lbl">' + esc(s.t) + '</span>' + CHECK + '</div>';
       stars += '<span' + (d ? ' class="on"' : '') + '>★</span>';
@@ -520,7 +417,7 @@ input:focus{outline:none;border-color:var(--go)}
     var sayBtn = ev.target.closest('[data-say]');
     if (sayBtn) {
       var st = S.steps.filter(function (s) { return s.id === sayBtn.getAttribute('data-say'); })[0];
-      if (st) speak('step:' + st.id, st.t);
+      if (st) say(st.t);
       return;
     }
     var card = ev.target.closest('.card');
@@ -583,7 +480,7 @@ input:focus{outline:none;border-color:var(--go)}
           return '<button data-id="' + esc(s.id) + '" aria-label="' + esc(s.t) + ' : annuler">' + esc(s.e) + '</button>';
         }).join('');
         if (!first) {
-          if (fromTap) speak(v, c.v, 0.5);
+          if (fromTap) say(c.v);
           if (v === 'play') burst(window.innerWidth / 2, window.innerHeight / 2, 28);
         }
       }
@@ -594,7 +491,7 @@ input:focus{outline:none;border-color:var(--go)}
     if (z !== zone) {
       if (zone !== null && z !== 'ok' && !fromTap) {
         chime(z === 'go' ? [784, 659, 784, 1047, 784, 1047] : [880, 660, 880, 660, 880, 660]);
-        speak(z, VIEWS[z].v, 1.3);
+        say(VIEWS[z].v);
       }
       zone = z;
     }
@@ -626,20 +523,14 @@ input:focus{outline:none;border-color:var(--go)}
         '<div class="field">' +
           '<label class="switch">Petits sons de réussite<input type="checkbox" id="f-sound"' + (S.sound ? ' checked' : '') + '></label>' +
           '<label class="switch">Voix qui lit les étapes<input type="checkbox" id="f-voice"' + (S.voice ? ' checked' : '') + '></label></div>' +
-        '<div class="field"><span class="lab">Ma voix</span>' +
-          (canRecord
-            ? '<small style="margin-top:0">Enregistrez vous-même chaque phrase : l’app jouera votre voix à la place de celle de l’appareil. Les enregistrements restent sur cet appareil, ils ne sont ni envoyés ni partagés.</small><ul id="f-voices"></ul>'
-            : '<small style="margin-top:0">L’enregistrement n’est pas disponible sur ce navigateur. L’app utilise la voix de l’appareil.</small>') +
-        '</div>' +
         '<div class="field"><button class="btn danger" data-act="reset">↺ Recommencer la matinée</button>' +
           '<small>Les étapes se remettent à zéro toutes seules chaque jour.<br>Astuce iPad : ajoutez la page à l’écran d’accueil (Partager → « Sur l’écran d’accueil ») et réglez Verrouillage auto sur « Jamais » pour que l’écran reste allumé.</small></div>' +
       '</div>';
-    renderStepList(); showBuf(); renderMarkers(); renderVoices();
+    renderStepList(); showBuf(); renderMarkers();
     panel.hidden = false; panel.scrollTop = 0;
   }
   function closeSettings() {
     S.steps.forEach(function (s) { if (!s.t.trim()) s.t = 'Étape'; });
-    stopRec(); stopStream();
     if (S.depart !== departBefore) { P.start = now().getTime(); saveP(); }
     saveS(); panel.hidden = true; panel.innerHTML = '';
     renderSteps(); view = view === 'steps' ? 'steps' : null; tick(true);
@@ -647,25 +538,6 @@ input:focus{outline:none;border-color:var(--go)}
   function renderMarkers() {
     $('f-marker').innerHTML = MARKERS.map(function (e) {
       return '<button data-act="marker" data-e="' + e + '"' + (e === S.marker ? ' class="sel" aria-pressed="true"' : '') + '>' + e + '</button>';
-    }).join('');
-  }
-  function renderVoices() {
-    var ul = $('f-voices');
-    if (!ul) return;
-    var items = S.steps.map(function (s) { return { k: 'step:' + s.id, e: s.e, t: s.t }; }).concat([
-      { k: 'play', e: '🧸', t: 'Tu peux jouer !' },
-      { k: 'shoes', e: '👟', t: 'On met les chaussures et le manteau' },
-      { k: 'go', e: '🚗', t: 'C’est l’heure de partir !' }
-    ]);
-    ul.innerHTML = items.map(function (it) {
-      var k = esc(it.k), has = !!raw[it.k];
-      return '<li><span class="e">' + esc(it.e) + '</span><span class="t">' + esc(it.t) + '</span>' +
-        (recKey === it.k
-          ? '<button class="btn rec" data-act="v-stop">■ Arrêter</button>'
-          : (has ? '<button class="btn sq" data-act="v-play" data-k="' + k + '" aria-label="Écouter">▶</button>' +
-                   '<button class="btn sq danger" data-act="v-del" data-k="' + k + '" aria-label="Effacer">✕</button>' : '') +
-            '<button class="btn" data-act="v-rec" data-k="' + k + '"' + (recKey ? ' disabled' : '') + '>🎙 ' + (has ? 'Refaire' : 'Enregistrer') + '</button>') +
-        '</li>';
     }).join('');
   }
   function showBuf() { $('f-buf').textContent = S.buffer + ' min'; }
@@ -693,20 +565,16 @@ input:focus{outline:none;border-color:var(--go)}
     if (act === 'close') { closeSettings(); return; }
     if (act === 't-' || act === 't+') { S.depart = toHHMM(toMin(S.depart) + (act === 't+' ? 5 : -5)); $('f-time').value = S.depart; }
     else if (act === 'b-' || act === 'b+') { S.buffer = Math.max(0, Math.min(20, S.buffer + (act === 'b+' ? 1 : -1))); showBuf(); }
-    else if (act === 'v-rec') { startRec(b.getAttribute('data-k')); return; }
-    else if (act === 'v-stop') { stopRec(); return; }
-    else if (act === 'v-play') { playRec(b.getAttribute('data-k')); return; }
-    else if (act === 'v-del') { delRec(b.getAttribute('data-k')); renderVoices(); return; }
     else if (act === 'marker') { S.marker = b.getAttribute('data-e'); renderMarkers(); }
     else if (act === 'reset') { P.done = []; P.start = now().getTime(); saveP(); toast('C’est reparti !'); }
     else {
       if (act === 'add') { S.steps.push({ id: 's' + Date.now().toString(36), e: '⭐', t: 'Nouvelle étape' }); pickFor = S.steps.length - 1; }
-      else if (act === 'del') { delRec('step:' + S.steps[i].id); S.steps.splice(i, 1); pickFor = null; }
+      else if (act === 'del') { S.steps.splice(i, 1); pickFor = null; }
       else if (act === 'up') { S.steps.splice(i - 1, 0, S.steps.splice(i, 1)[0]); pickFor = null; }
       else if (act === 'down') { S.steps.splice(i + 1, 0, S.steps.splice(i, 1)[0]); pickFor = null; }
       else if (act === 'pick') { pickFor = pickFor === i ? null : i; }
       else if (act === 'emo') { S.steps[i].e = b.getAttribute('data-e'); pickFor = null; }
-      renderStepList(); renderVoices();
+      renderStepList();
     }
     saveS();
   });
@@ -716,7 +584,7 @@ input:focus{outline:none;border-color:var(--go)}
     else if (t.id === 'f-time') { if (/^\d{2}:\d{2}/.test(t.value)) S.depart = t.value.slice(0, 5); }
     else if (t.id === 'f-sound') S.sound = t.checked;
     else if (t.id === 'f-voice') S.voice = t.checked;
-    else if (t.hasAttribute('data-i')) { S.steps[+t.getAttribute('data-i')].t = t.value; renderVoices(); }
+    else if (t.hasAttribute('data-i')) S.steps[+t.getAttribute('data-i')].t = t.value;
     saveS();
   });
 
@@ -749,12 +617,15 @@ input:focus{outline:none;border-color:var(--go)}
     document.removeEventListener('click', unlock, true);
     try {
       var AC = window.AudioContext || window.webkitAudioContext;
-      audio();
+      if (AC) { if (!actx) actx = new AC(); if (actx.state === 'suspended') actx.resume(); }
       if (canSpeak) { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }
     } catch (e) {}
   }
   document.addEventListener('touchend', unlock, true);
   document.addEventListener('click', unlock, true);
+
+  /* Efface les anciens enregistrements de voix (fonction retirée) */
+  try { if (window.indexedDB) indexedDB.deleteDatabase('monmatin'); } catch (e) {}
 
   /* ---------- Démarrage ---------- */
   renderSteps();
@@ -764,7 +635,6 @@ input:focus{outline:none;border-color:var(--go)}
   window.addEventListener('orientationchange', function () { setTimeout(layout, 300); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) { tick(); keepAwake(); } });
   if (firstRun) openSettings(true);
-  loadRecs().then(function () { renderSteps(); renderVoices(); });
 
   /* Garder l'écran allumé quand le navigateur le permet (iPadOS 16.4+) */
   function keepAwake() {

@@ -13,8 +13,7 @@ La routine du matin en images, pour les enfants qui ne savent pas encore lire l'
 ## Réglages (parents)
 
 Rester appuyé 1 seconde sur ⚙️ en haut à droite : prénom, heure de départ, durée de la zone orange, personnage qui avance sur le chemin,
-étapes (image, nom, ordre, jusqu'à 8), sons et voix. On peut aussi enregistrer sa propre voix pour chaque phrase.
-Tout est enregistré sur l'appareil (réglages et voix), rien n'est envoyé ailleurs.
+étapes (image, nom, ordre, jusqu'à 8), sons et voix. Tout est enregistré sur l'appareil, rien n'est envoyé ailleurs.
 Les étapes se remettent à zéro chaque jour.
 
 ## Sur iPad
