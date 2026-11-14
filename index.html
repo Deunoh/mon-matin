@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mon matin">
+<meta name="theme-color" content="#FFE6C2">
+<meta name="description" content="La routine du matin en images pour les petits : les étapes à faire, puis le temps de jeu qui reste avant de partir.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<title>Mon matin</title>
+<style>
+:root{
+  --ink:#3B2F4A;
+  --ink-soft:#7A6E88;
+  --sky-top:#FFE1B8;
+  --sky-bot:#FFF7EA;
+  --card:#FFFFFF;
+  --sun:#FFC02E;
+  --go:#34B37E;
+  --go-soft:#DDF5E7;
+  --warn:#FF9838;
+  --line:rgba(59,47,74,.12);
+  --shadow:0 5px 0 rgba(59,47,74,.08), 0 16px 32px rgba(59,47,74,.10);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden}
+body{
+  font-family:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Nunito",-apple-system,system-ui,sans-serif;
+  color:var(--ink);
+  background:linear-gradient(180deg,var(--sky-top),var(--sky-bot) 55%);
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  touch-action:manipulation;
+}
+input{-webkit-user-select:text;user-select:text;font:inherit;color:inherit}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;margin:0;cursor:pointer;touch-action:manipulation}
+
+#app{
+  position:fixed;top:0;right:0;bottom:0;left:0;
+  display:flex;flex-direction:column;
+  padding:14px 20px 20px;
+  padding-top:calc(14px + env(safe-area-inset-top));
+  padding-bottom:calc(20px + env(safe-area-inset-bottom));
+  padding-left:calc(20px + env(safe-area-inset-left));
+  padding-right:calc(20px + env(safe-area-inset-right));
+}
+
+/* ---------- En-tête ---------- */
+header{display:flex;align-items:center;gap:16px;flex:0 0 auto;min-height:56px;margin-bottom:12px}
+#hello{margin:0;font-size:30px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stars{display:flex;gap:4px;margin-left:auto;font-size:28px;line-height:1}
+#stars span{color:rgba(59,47,74,.16);transition:color .3s, transform .3s}
+#stars span.on{color:var(--sun);transform:scale(1.15);text-shadow:0 2px 0 rgba(180,120,0,.25)}
+#gear{position:relative;width:52px;height:52px;flex:0 0 auto;border-radius:50%;font-size:24px;opacity:.55}
+#gear svg{position:absolute;top:0;left:0;width:100%;height:100%;transform:rotate(-90deg)}
+#gear circle{fill:none;stroke:var(--ink);stroke-width:4;stroke-linecap:round;stroke-dasharray:138;stroke-dashoffset:138}
+#gear.holding{opacity:1}
+#gear.holding circle{transition:stroke-dashoffset 1.2s linear;stroke-dashoffset:0}
+
+/* ---------- Scène ---------- */
+#stage{flex:1 1 0;min-height:0;display:flex;gap:20px}
+#steps,#big{flex:1 1 0;min-width:0;min-height:0}
+#clock{flex:0 0 34%;min-width:0;min-height:0}
+@media (orientation:portrait){
+  #stage{flex-direction:column}
+  #clock{flex:0 0 38%}
+}
+#stage[data-view="steps"] #big{display:none}
+#stage:not([data-view="steps"]) #steps{display:none}
+#stage[data-view="go"] #clock{display:none}
+
+/* ---------- Cartes d'étapes ---------- */
+#steps{display:grid;gap:16px;grid-auto-rows:1fr}
+.card{
+  position:relative;min-height:0;min-width:0;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--card);border-radius:30px;border:5px solid transparent;
+  box-shadow:var(--shadow);
+  transition:transform .12s ease, background .3s;
+}
+.card:active{transform:scale(.97)}
+.card .emo{line-height:1.15;transition:opacity .3s, transform .3s}
+.card .lbl{font-weight:700;text-align:center;padding:0 12px;line-height:1.15;max-width:100%}
+.card .num{
+  position:absolute;top:12px;left:12px;width:38px;height:38px;border-radius:50%;
+  background:var(--sky-top);font-weight:800;font-size:20px;
+  display:flex;align-items:center;justify-content:center;
+}
+.card .say{
+  position:absolute;top:8px;right:8px;width:48px;height:48px;border-radius:50%;
+  font-size:22px;opacity:.6;
+}
+.card.next{border-color:var(--sun);animation:pulse 2.2s ease-in-out infinite}
+.card.done{background:var(--go-soft)}
+.card.done .emo{opacity:.35;transform:scale(.9)}
+.card.done .lbl{opacity:.55}
+.card.done .num{background:#fff}
+.card .check{
+  position:absolute;top:50%;left:50%;width:1em;height:1em;margin:-.62em 0 0 -.5em;
+  border-radius:50%;background:var(--go);display:none;align-items:center;justify-content:center;
+  box-shadow:0 .06em 0 rgba(20,90,60,.35);
+}
+.card .check svg{width:60%;height:60%}
+.card.done .check{display:flex;animation:pop .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pulse{0%,100%{box-shadow:var(--shadow),0 0 0 0 rgba(255,192,46,.55)}50%{box-shadow:var(--shadow),0 0 0 12px rgba(255,192,46,0)}}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+
+/* ---------- Grand écran (jouer / chaussures / départ) ---------- */
+#big{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;
+  background:var(--card);border-radius:36px;box-shadow:var(--shadow);padding:20px}
+#bigEmo{font-size:24vmin;line-height:1.1;animation:bob 2.4s ease-in-out infinite}
+#bigTitle{margin:0;font-size:5.4vmin;font-weight:800;letter-spacing:-.01em}
+#bigSub{margin:0;font-size:2.6vmin;color:var(--ink-soft);font-weight:600;max-width:26em}
+#badges{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+#badges button{width:54px;height:54px;border-radius:50%;background:var(--go-soft);font-size:26px;position:relative}
+#badges button::after{content:"";position:absolute;right:-2px;bottom:-2px;width:20px;height:20px;border-radius:50%;
+  background:var(--go) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/70% no-repeat}
+#stage[data-view="shoes"] #big{background:#FFF1E0}
+#stage[data-view="go"] #big{background:#FFF7D6}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-3%) rotate(3deg)}}
+
+/* ---------- Horloge visuelle ---------- */
+#clock{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.55);border-radius:36px;padding:12px}
+#disc{flex:1 1 0;min-height:0;width:100%;max-height:100%;-webkit-filter:drop-shadow(0 8px 14px rgba(59,47,74,.14));filter:drop-shadow(0 8px 14px rgba(59,47,74,.14))}
+#legend{flex:0 0 auto;display:flex;gap:18px;align-items:center;justify-content:center;font-size:22px;padding:4px 0 2px;flex-wrap:wrap}
+#legend i{display:inline-block;width:22px;height:22px;border-radius:50%;vertical-align:-4px;margin-right:6px}
+#departTxt{flex:0 0 auto;font-size:14px;color:var(--ink-soft);font-weight:600;opacity:.8}
+
+/* ---------- Confettis / messages ---------- */
+#fx{position:fixed;top:0;left:0;width:0;height:0;pointer-events:none;z-index:50}
+#fx span{position:absolute;font-size:30px;animation:fly 1s ease-out forwards}
+@keyframes fly{from{transform:translate(-50%,-50%) scale(.3);opacity:1}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(var(--rot)) scale(1.3);opacity:0}}
+#toast{position:fixed;left:50%;top:76px;transform:translateX(-50%);background:var(--ink);color:#fff;
+  padding:12px 20px;border-radius:999px;font-weight:700;font-size:16px;z-index:60;opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* ---------- Réglages parents ---------- */
+#settings{position:fixed;top:0;right:0;bottom:0;left:0;z-index:100;background:rgba(59,47,74,.45);
+  display:flex;justify-content:center;align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(20px + env(safe-area-inset-top)) 16px 40px}
+.sheet{background:#FFFBF4;border-radius:28px;width:100%;max-width:640px;padding:22px 22px 26px;box-shadow:0 30px 60px rgba(0,0,0,.25)}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+.sheet h2{margin:0;font-size:24px;font-weight:800}
+.sheet .intro{margin:0 0 14px;color:var(--ink-soft);font-weight:600;font-size:15px;line-height:1.4}
+.field{padding:14px 0;border-top:1px solid var(--line)}
+.field>label,.field>.lab{display:block;font-weight:800;font-size:15px;margin-bottom:10px}
+.field small{display:block;color:var(--ink-soft);font-weight:600;font-size:13px;margin-top:8px;line-height:1.4}
+.row{display:flex;align-items:center;gap:10px}
+.btn{min-height:46px;padding:0 18px;border-radius:999px;background:#fff;border:2px solid var(--line);font-weight:800;font-size:16px}
+.btn:active{transform:scale(.96)}
+.btn.primary{background:var(--go);border-color:var(--go);color:#fff}
+.btn.sq{width:46px;padding:0;flex:0 0 auto}
+.btn.ghost{background:transparent}
+.btn.danger{color:#C2412D}
+.btn[disabled]{opacity:.3}
+input[type=text],input[type=time]{min-height:46px;border-radius:14px;border:2px solid var(--line);background:#fff;padding:0 14px;font-weight:700;font-size:17px;min-width:0}
+input[type=text]{flex:1 1 0;width:100%}
+input[type=time]{font-size:22px;text-align:center;min-width:140px}
+input:focus{outline:none;border-color:var(--go)}
+#f-buf{font-weight:800;font-size:20px;min-width:80px;text-align:center}
+#f-steps{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:8px}
+#f-steps li{background:#fff;border-radius:18px;padding:8px;border:2px solid var(--line)}
+#f-steps .emoBtn{width:46px;height:46px;flex:0 0 auto;border-radius:14px;background:var(--sky-bot);font-size:26px}
+.picker{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.picker button{width:44px;height:44px;font-size:26px;border-radius:12px}
+.picker button:active{background:var(--sky-top)}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:800;font-size:15px;padding:6px 0}
+.switch input{-webkit-appearance:none;appearance:none;width:56px;height:32px;border-radius:999px;background:rgba(59,47,74,.2);position:relative;transition:background .2s;flex:0 0 auto;margin:0}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch input:checked{background:var(--go)}
+.switch input:checked::after{transform:translateX(24px)}
+
+@media (max-width:600px){
+  #hello{font-size:22px}
+  #stars{font-size:20px}
+  .card .say{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .card.next,#bigEmo{animation:none}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <h1 id="hello">Bonjour ☀️</h1>
+    <div id="stars" aria-hidden="true"></div>
+    <button id="gear" aria-label="Réglages parents : rester appuyé">
+      ⚙️<svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="22"/></svg>
+    </button>
+  </header>
+
+  <main id="stage" data-view="steps">
+    <section id="steps" aria-label="Les étapes du matin"></section>
+
+    <section id="big" aria-live="polite">
+      <div id="bigEmo"></div>
+      <h2 id="bigTitle"></h2>
+      <p id="bigSub"></p>
+      <div id="badges"></div>
+    </section>
+
+    <aside id="clock">
+      <svg id="disc" viewBox="0 0 200 216" role="img" aria-label="Temps restant avant de partir">
+        <text x="100" y="24" text-anchor="middle" font-size="24">🚗</text>
+        <circle cx="100" cy="122" r="90" fill="#fff"/>
+        <g id="ticks" fill="#3B2F4A"></g>
+        <path id="wGreen" fill="#34B37E"/>
+        <path id="wOrange" fill="#FF9838"/>
+        <text id="iPlay" text-anchor="middle" font-size="24" dy=".35em">🧸</text>
+        <text id="iShoe" text-anchor="middle" font-size="18" dy=".35em">👟</text>
+        <circle cx="100" cy="122" r="7" fill="#3B2F4A"/>
+      </svg>
+      <div id="legend" aria-hidden="true">
+        <span><i style="background:#34B37E"></i>🧸</span>
+        <span><i style="background:#FF9838"></i>👟🧥</span>
+        <span>🚗</span>
+      </div>
+      <div id="departTxt"></div>
+    </aside>
+  </main>
+</div>
+
+<div id="fx" aria-hidden="true"></div>
+<div id="toast" role="status"></div>
+<div id="settings" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var LS_S = 'monmatin.settings.v1';
+  var LS_P = 'monmatin.progress.v1';
+  var MAX_STEPS = 8;
+  var DISC_MIN = 60;            // le disque entier = 60 minutes
+  var CX = 100, CY = 122, R = 78;
+
+  var DEFAULTS = {
+    name: '',
+    depart: '08:15',
+    buffer: 5,
+    sound: true,
+    voice: true,
+    steps: [
+      { id: 'dej',    e: '🥣', t: 'Petit déjeuner' },
+      { id: 'habits', e: '👕', t: "S'habiller" },
+      { id: 'dents',  e: '🪥', t: 'Se laver les dents' },
+      { id: 'coiffe', e: '🎀', t: 'Se coiffer' }
+    ]
+  };
+  var EMOJIS = ['🥣','🥐','🥛','🍎','🍌','👕','👗','👖','🧦','👟','🧥','🧢','🪥','🧼','🚿','🛁','🚽','🧴',
+                '💇‍♀️','💇‍♂️','🎀','👓','🛏️','🎒','📚','💊','🐶','🐱','🌱','🧸','🎨','🚗','🚲','🚌','🏫','❤️'];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var stage = $('stage'), stepsEl = $('steps'), panel = $('settings');
+
+  /* ---------- Heure (avec mode démo ?now=HH:MM) ---------- */
+  var offset = 0;
+  (function () {
+    var m = /[?&]now=(\d{1,2})[:h](\d{2})/.exec(location.search);
+    if (!m) return;
+    var d = new Date(); d.setHours(+m[1], +m[2], 0, 0);
+    offset = d.getTime() - Date.now();
+  })();
+  function now() { return new Date(Date.now() + offset); }
+  function dayKey(d) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+
+  /* ---------- Données ---------- */
+  function load(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
+  function store(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) {} }
+
+  var saved = load(LS_S);
+  var firstRun = !saved;
+  var S = Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), saved || {});
+  if (!S.steps || !S.steps.length) S.steps = JSON.parse(JSON.stringify(DEFAULTS.steps));
+  var P = load(LS_P) || {};
+  if (P.date !== dayKey(now()) || !P.done) P = { date: dayKey(now()), done: [] };
+
+  function saveS() { store(LS_S, S); }
+  function saveP() { store(LS_P, P); }
+  function isDone(id) { return P.done.indexOf(id) >= 0; }
+  function allDone() { return S.steps.every(function (s) { return isDone(s.id); }); }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function toMin(hhmm) { var p = hhmm.split(':'); return (+p[0]) * 60 + (+p[1]); }
+  function toHHMM(m) { m = ((m % 1440) + 1440) % 1440; var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; }
+  function niceTime(hhmm) { var p = hhmm.split(':'); return (+p[0]) + 'h' + p[1]; }
+
+  /* Minutes restantes avant le départ (négatif si l'heure est passée) */
+  function remaining() {
+    var n = now(), d = new Date(n.getTime()), p = S.depart.split(':');
+    d.setHours(+p[0], +p[1], 0, 0);
+    return (d.getTime() - n.getTime()) / 60000;
+  }
+
+  /* ---------- Son et voix ---------- */
+  var actx = null;
+  function chime(notes) {
+    if (!S.sound) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!actx) actx = new AC();
+      if (actx.state === 'suspended') actx.resume();
+      var t = actx.currentTime;
+      notes.forEach(function (f, i) {
+        var o = actx.createOscillator(), g = actx.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        var s = t + i * 0.13;
+        g.gain.setValueAtTime(0.0001, s);
+        g.gain.exponentialRampToValueAtTime(0.25, s + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, s + 0.5);
+        o.connect(g); g.connect(actx.destination);
+        o.start(s); o.stop(s + 0.55);
+      });
+    } catch (e) {}
+  }
+  var canSpeak = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+  function say(text) {
+    if (!S.voice || !canSpeak) return;
+    try {
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'fr-FR'; u.rate = 0.9; u.pitch = 1.1;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  /* ---------- Confettis ---------- */
+  function burst(x, y, n) {
+    var fx = $('fx'), bits = ['⭐', '✨', '🌟', '💛'];
+    for (var i = 0; i < (n || 14); i++) {
+      var s = document.createElement('span');
+      var a = Math.random() * Math.PI * 2, d = 80 + Math.random() * 160;
+      s.textContent = bits[i % bits.length];
+      s.style.left = x + 'px'; s.style.top = y + 'px';
+      s.style.setProperty('--dx', Math.cos(a) * d + 'px');
+      s.style.setProperty('--dy', Math.sin(a) * d + 'px');
+      s.style.setProperty('--rot', (Math.random() * 360 - 180) + 'deg');
+      fx.appendChild(s);
+      (function (el) { setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1100); })(s);
+    }
+  }
+  var toastT;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  /* ---------- Étapes ---------- */
+  var CHECK = '<span class="check"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+
+  function renderSteps() {
+    $('hello').textContent = 'Bonjour' + (S.name ? ' ' + S.name : '') + ' ☀️';
+    var n = S.steps.length;
+    var cols = n <= 3 ? n : n === 4 ? 2 : n <= 6 ? 3 : 4;
+    stepsEl.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+    var nextFound = false, html = '', stars = '';
+    S.steps.forEach(function (s, i) {
+      var d = isDone(s.id), cls = 'card';
+      if (d) cls += ' done'; else if (!nextFound) { cls += ' next'; nextFound = true; }
+      html += '<div class="' + cls + '" role="button" tabindex="0" aria-pressed="' + d + '" data-id="' + esc(s.id) + '">' +
+        '<span class="num">' + (i + 1) + '</span>' +
+        (S.voice && canSpeak ? '<button class="say" data-say="' + esc(s.id) + '" aria-label="Écouter">🔊</button>' : '') +
+        '<span class="emo">' + esc(s.e) + '</span>' +
+        '<span class="lbl">' + esc(s.t) + '</span>' + CHECK + '</div>';
+      stars += '<span' + (d ? ' class="on"' : '') + '>★</span>';
+    });
+    stepsEl.innerHTML = html;
+    $('stars').innerHTML = stars;
+    $('departTxt').textContent = 'Départ à ' + niceTime(S.depart);
+    layout();
+  }
+
+  /* Taille des images selon la place disponible dans chaque carte */
+  function layout() {
+    var cards = stepsEl.children;
+    for (var i = 0; i < cards.length; i++) {
+      var r = cards[i].getBoundingClientRect();
+      if (!r.width) continue;
+      var m = Math.min(r.width, r.height);
+      var emo = Math.max(36, Math.min(r.width * 0.46, r.height * 0.48));
+      cards[i].querySelector('.emo').style.fontSize = emo + 'px';
+      cards[i].querySelector('.check').style.fontSize = emo + 'px';
+      cards[i].querySelector('.lbl').style.fontSize = Math.max(14, Math.min(30, m * 0.1)) + 'px';
+    }
+  }
+
+  function toggle(id, el) {
+    var i = P.done.indexOf(id);
+    if (i >= 0) { P.done.splice(i, 1); }
+    else {
+      P.done.push(id);
+      if (el) { var r = el.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2); }
+      chime(allDone() ? [523, 659, 784, 1047] : [659, 880]);
+    }
+    saveP(); renderSteps(); tick(true);
+  }
+
+  stepsEl.addEventListener('click', function (ev) {
+    var sayBtn = ev.target.closest('[data-say]');
+    if (sayBtn) {
+      var st = S.steps.filter(function (s) { return s.id === sayBtn.getAttribute('data-say'); })[0];
+      if (st) say(st.t);
+      return;
+    }
+    var card = ev.target.closest('.card');
+    if (card) toggle(card.getAttribute('data-id'), card);
+  });
+  $('badges').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button');
+    if (b) toggle(b.getAttribute('data-id'));
+  });
+
+  /* ---------- Horloge visuelle ---------- */
+  function pt(deg, r) { var a = (deg - 90) * Math.PI / 180; return [CX + r * Math.cos(a), CY + r * Math.sin(a)]; }
+  function wedge(a0, a1) {
+    if (a1 - a0 < 0.05) return '';
+    a1 = Math.min(a1, a0 + 359.99);
+    var p0 = pt(a0, R), p1 = pt(a1, R);
+    return 'M' + CX + ' ' + CY + 'L' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) +
+      'A' + R + ' ' + R + ' 0 ' + (a1 - a0 > 180 ? 1 : 0) + ' 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2) + 'Z';
+  }
+  function place(el, a0, a1, minSpan) {
+    if (a1 - a0 < minSpan) { el.style.display = 'none'; return; }
+    var p = pt((a0 + a1) / 2, R * 0.62);
+    el.style.display = ''; el.setAttribute('x', p[0].toFixed(1)); el.setAttribute('y', p[1].toFixed(1));
+  }
+  (function ticks() {
+    var h = '';
+    for (var i = 0; i < 12; i++) { var p = pt(i * 30, 84.5); h += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + (i % 3 ? 1.4 : 2.4) + '" opacity="' + (i % 3 ? .3 : .55) + '"/>'; }
+    $('ticks').innerHTML = h;
+  })();
+
+  function drawDisc(rm) {
+    var cap = Math.max(0, Math.min(rm, DISC_MIN)), b = Math.min(S.buffer, DISC_MIN);
+    var oEnd = Math.min(cap, b) * 6, gEnd = cap * 6;
+    $('wOrange').setAttribute('d', wedge(0, oEnd));
+    $('wGreen').setAttribute('d', cap > b ? wedge(b * 6, gEnd) : '');
+    place($('iShoe'), 0, oEnd, 20);
+    place($('iPlay'), b * 6, cap > b ? gEnd : b * 6, 28);
+  }
+
+  /* ---------- Quel écran montrer ? ---------- */
+  var VIEWS = {
+    play:  { e: '🧸',   t: 'Tu peux jouer !',                 s: 'Quand le vert a disparu, on met les chaussures.', v: 'Bravo ! Tu peux jouer !' },
+    shoes: { e: '👟🧥', t: 'On met les chaussures et le manteau', s: 'Quand l’orange a disparu, on part.',          v: 'C’est l’heure de mettre les chaussures et le manteau.' },
+    go:    { e: '🚗',   t: 'C’est l’heure de partir !',       s: 'Bonne journée !',                                 v: 'C’est l’heure de partir ! Bonne journée !' }
+  };
+  var view = null;
+
+  function tick(fromTap) {
+    var n = now();
+    if (P.date !== dayKey(n)) { P = { date: dayKey(n), done: [] }; saveP(); renderSteps(); }
+    var rm = remaining();
+    var v = rm <= 0 ? 'go' : !allDone() ? 'steps' : rm <= S.buffer ? 'shoes' : 'play';
+    if (v !== view) {
+      var first = view === null;
+      view = v; stage.setAttribute('data-view', v);
+      if (v === 'steps') { layout(); }
+      else {
+        var c = VIEWS[v];
+        $('bigEmo').textContent = c.e;
+        $('bigTitle').textContent = c.t;
+        $('bigSub').textContent = v === 'go' && S.name ? 'Bonne journée ' + S.name + ' !' : c.s;
+        $('badges').innerHTML = v === 'go' ? '' : S.steps.map(function (s) {
+          return '<button data-id="' + esc(s.id) + '" aria-label="' + esc(s.t) + ' : annuler">' + esc(s.e) + '</button>';
+        }).join('');
+        if (!first) {
+          say(c.v);
+          if (!fromTap) chime(v === 'go' ? [784, 659, 784, 1047] : [784, 659]);
+          if (v === 'play') burst(window.innerWidth / 2, window.innerHeight / 2, 28);
+        }
+      }
+    }
+    drawDisc(rm);
+  }
+
+  /* ---------- Réglages parents ---------- */
+  var pickFor = null;
+
+  function openSettings(welcome) {
+    pickFor = null;
+    panel.innerHTML =
+      '<div class="sheet" role="dialog" aria-label="Réglages parents">' +
+        '<div class="sheet-head"><h2>Réglages parents</h2><button class="btn primary" data-act="close">Terminé</button></div>' +
+        (welcome ? '<p class="intro">Bienvenue ! Indiquez l’heure de départ et les étapes du matin. Pour revenir ici plus tard, restez appuyé sur ⚙️ en haut à droite.</p>' : '') +
+        '<div class="field"><label for="f-name">Prénom de l’enfant</label>' +
+          '<div class="row"><input id="f-name" type="text" maxlength="20" autocomplete="off" placeholder="Prénom" value="' + esc(S.name) + '"></div></div>' +
+        '<div class="field"><label for="f-time">Heure de départ</label>' +
+          '<div class="row"><button class="btn sq" data-act="t-" aria-label="5 minutes plus tôt">−5</button>' +
+          '<input id="f-time" type="time" value="' + esc(S.depart) + '">' +
+          '<button class="btn sq" data-act="t+" aria-label="5 minutes plus tard">+5</button></div>' +
+          '<small>Le disque entier représente 60 minutes. Le vert, c’est le temps avant de se préparer à partir.</small></div>' +
+        '<div class="field"><span class="lab">Temps pour les chaussures et le manteau (zone orange)</span>' +
+          '<div class="row"><button class="btn sq" data-act="b-" aria-label="Moins">−</button><output id="f-buf"></output>' +
+          '<button class="btn sq" data-act="b+" aria-label="Plus">+</button></div></div>' +
+        '<div class="field"><span class="lab">Étapes du matin</span><ul id="f-steps"></ul>' +
+          '<button class="btn" data-act="add" id="f-add">+ Ajouter une étape</button></div>' +
+        '<div class="field">' +
+          '<label class="switch">Petits sons de réussite<input type="checkbox" id="f-sound"' + (S.sound ? ' checked' : '') + '></label>' +
+          '<label class="switch">Voix qui lit les étapes<input type="checkbox" id="f-voice"' + (S.voice ? ' checked' : '') + '></label></div>' +
+        '<div class="field"><button class="btn danger" data-act="reset">↺ Recommencer la matinée</button>' +
+          '<small>Les étapes se remettent à zéro toutes seules chaque jour.<br>Astuce iPad : ajoutez la page à l’écran d’accueil (Partager → « Sur l’écran d’accueil ») et réglez Verrouillage auto sur « Jamais » pour que l’écran reste allumé.</small></div>' +
+      '</div>';
+    renderStepList(); showBuf();
+    panel.hidden = false; panel.scrollTop = 0;
+  }
+  function closeSettings() {
+    S.steps.forEach(function (s) { if (!s.t.trim()) s.t = 'Étape'; });
+    saveS(); panel.hidden = true; panel.innerHTML = '';
+    renderSteps(); view = view === 'steps' ? 'steps' : null; tick(true);
+  }
+  function showBuf() { $('f-buf').textContent = S.buffer + ' min'; }
+  function renderStepList() {
+    var n = S.steps.length;
+    $('f-steps').innerHTML = S.steps.map(function (s, i) {
+      return '<li><div class="row">' +
+        '<button class="emoBtn" data-act="pick" data-i="' + i + '" aria-label="Changer l’image">' + esc(s.e) + '</button>' +
+        '<input type="text" maxlength="28" data-i="' + i + '" value="' + esc(s.t) + '" aria-label="Nom de l’étape">' +
+        '<button class="btn sq ghost" data-act="up" data-i="' + i + '"' + (i === 0 ? ' disabled' : '') + ' aria-label="Monter">↑</button>' +
+        '<button class="btn sq ghost" data-act="down" data-i="' + i + '"' + (i === n - 1 ? ' disabled' : '') + ' aria-label="Descendre">↓</button>' +
+        '<button class="btn sq ghost danger" data-act="del" data-i="' + i + '"' + (n === 1 ? ' disabled' : '') + ' aria-label="Supprimer">✕</button>' +
+        '</div>' +
+        (pickFor === i ? '<div class="picker">' + EMOJIS.map(function (e) { return '<button data-act="emo" data-i="' + i + '" data-e="' + e + '">' + e + '</button>'; }).join('') + '</div>' : '') +
+        '</li>';
+    }).join('');
+    $('f-add').disabled = n >= MAX_STEPS;
+  }
+
+  panel.addEventListener('click', function (ev) {
+    if (ev.target === panel) { closeSettings(); return; }
+    var b = ev.target.closest('[data-act]');
+    if (!b || b.disabled) return;
+    var act = b.getAttribute('data-act'), i = +b.getAttribute('data-i');
+    if (act === 'close') { closeSettings(); return; }
+    if (act === 't-' || act === 't+') { S.depart = toHHMM(toMin(S.depart) + (act === 't+' ? 5 : -5)); $('f-time').value = S.depart; }
+    else if (act === 'b-' || act === 'b+') { S.buffer = Math.max(0, Math.min(20, S.buffer + (act === 'b+' ? 1 : -1))); showBuf(); }
+    else if (act === 'reset') { P.done = []; saveP(); toast('C’est reparti !'); }
+    else {
+      if (act === 'add') { S.steps.push({ id: 's' + Date.now().toString(36), e: '⭐', t: 'Nouvelle étape' }); pickFor = S.steps.length - 1; }
+      else if (act === 'del') { S.steps.splice(i, 1); pickFor = null; }
+      else if (act === 'up') { S.steps.splice(i - 1, 0, S.steps.splice(i, 1)[0]); pickFor = null; }
+      else if (act === 'down') { S.steps.splice(i + 1, 0, S.steps.splice(i, 1)[0]); pickFor = null; }
+      else if (act === 'pick') { pickFor = pickFor === i ? null : i; }
+      else if (act === 'emo') { S.steps[i].e = b.getAttribute('data-e'); pickFor = null; }
+      renderStepList();
+    }
+    saveS();
+  });
+  panel.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t.id === 'f-name') S.name = t.value.trim();
+    else if (t.id === 'f-time') { if (/^\d{2}:\d{2}/.test(t.value)) S.depart = t.value.slice(0, 5); }
+    else if (t.id === 'f-sound') S.sound = t.checked;
+    else if (t.id === 'f-voice') S.voice = t.checked;
+    else if (t.hasAttribute('data-i')) S.steps[+t.getAttribute('data-i')].t = t.value;
+    saveS();
+  });
+
+  /* Engrenage : rester appuyé (pour que les petits doigts n'y aillent pas) */
+  (function () {
+    var gear = $('gear'), timer = null, opened = false;
+    function start(ev) {
+      ev.preventDefault(); opened = false;
+      gear.classList.add('holding');
+      timer = setTimeout(function () { opened = true; stop(); openSettings(false); }, 1200);
+    }
+    function stop() { clearTimeout(timer); timer = null; gear.classList.remove('holding'); }
+    function end() { if (timer) { stop(); if (!opened) toast('Parents : restez appuyé sur ⚙️'); } }
+    if (window.PointerEvent) {
+      gear.addEventListener('pointerdown', start);
+      gear.addEventListener('pointerup', end);
+      gear.addEventListener('pointerleave', stop);
+      gear.addEventListener('pointercancel', stop);
+    } else {
+      gear.addEventListener('touchstart', start);
+      gear.addEventListener('touchend', end);
+      gear.addEventListener('touchcancel', stop);
+    }
+    gear.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  })();
+
+  /* ---------- Démarrage ---------- */
+  renderSteps();
+  tick();
+  setInterval(tick, 1000);
+  window.addEventListener('resize', layout);
+  window.addEventListener('orientationchange', function () { setTimeout(layout, 300); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { tick(); keepAwake(); } });
+  if (firstRun) openSettings(true);
+
+  /* Garder l'écran allumé quand le navigateur le permet (iPadOS 16.4+) */
+  function keepAwake() {
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(function () {}); } catch (e) {}
+  }
+  keepAwake();
+
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
