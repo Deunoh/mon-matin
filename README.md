@@ -4,11 +4,11 @@ La routine du matin en images, pour les enfants qui ne savent pas encore lire l'
 
 - L'enfant touche chaque étape quand elle est faite (petit déjeuner, s'habiller, dents, coiffure…).
 - Quand tout est fait : **« Tu peux jouer ! »**
-- Un disque montre le temps qui reste, sans chiffres :
-  - **vert 🧸** = temps de jeu,
-  - **orange 👟🧥** = on met les chaussures et le manteau,
-  - **plus de couleur 🚗** = on part.
-  - Le disque entier représente 60 minutes.
+- En bas, un chemin montre le temps qui reste, sans chiffres : le **soleil ☀️ avance vers la voiture 🚗**.
+  - tant qu'il est dans le **vert 🧸**, on a le temps (et on peut jouer quand tout est fait),
+  - quand il arrive dans l'**orange 👟**, on met les chaussures et le manteau,
+  - quand il arrive à la **voiture**, on part.
+  - Le chemin entier représente 60 minutes.
 
 ## Réglages (parents)
 

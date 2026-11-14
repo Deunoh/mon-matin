@@ -63,13 +63,9 @@ header{display:flex;align-items:center;gap:16px;flex:0 0 auto;min-height:56px;ma
 #gear.holding circle{transition:stroke-dashoffset 1.2s linear;stroke-dashoffset:0}
 
 /* ---------- Scène ---------- */
-#stage{flex:1 1 0;min-height:0;display:flex;gap:20px}
+#stage{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:16px}
 #steps,#big{flex:1 1 0;min-width:0;min-height:0}
-#clock{flex:0 0 34%;min-width:0;min-height:0}
-@media (orientation:portrait){
-  #stage{flex-direction:column}
-  #clock{flex:0 0 38%}
-}
+#clock{flex:0 0 auto}
 #stage[data-view="steps"] #big{display:none}
 #stage:not([data-view="steps"]) #steps{display:none}
 #stage[data-view="go"] #clock{display:none}
@@ -124,13 +120,22 @@ header{display:flex;align-items:center;gap:16px;flex:0 0 auto;min-height:56px;ma
 #stage[data-view="go"] #big{background:#FFF7D6}
 @keyframes bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-3%) rotate(3deg)}}
 
-/* ---------- Horloge visuelle ---------- */
-#clock{display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:rgba(255,255,255,.55);border-radius:36px;padding:12px}
-#disc{flex:1 1 0;min-height:0;width:100%;max-height:100%;-webkit-filter:drop-shadow(0 8px 14px rgba(59,47,74,.14));filter:drop-shadow(0 8px 14px rgba(59,47,74,.14))}
-#legend{flex:0 0 auto;display:flex;gap:18px;align-items:center;justify-content:center;font-size:22px;padding:4px 0 2px;flex-wrap:wrap}
-#legend i{display:inline-block;width:22px;height:22px;border-radius:50%;vertical-align:-4px;margin-right:6px}
-#departTxt{flex:0 0 auto;font-size:14px;color:var(--ink-soft);font-weight:600;opacity:.8}
+/* ---------- Chemin du temps ---------- */
+#clock{background:rgba(255,255,255,.6);border-radius:30px;padding:30px 18px 12px 50px;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:10px;align-items:center}
+#track{position:relative;height:56px}
+#bar{position:absolute;top:0;right:0;bottom:0;left:0;border-radius:999px;overflow:hidden;background:#EDE4D8}
+#bar div{position:absolute;top:0;bottom:0}
+#zGreen{left:0;background:var(--go)}
+#zOrange{right:0;background:var(--warn)}
+#past{left:0;background:#EDE4D8;box-shadow:inset 0 2px 4px rgba(59,47,74,.12)}
+#track .ico{position:absolute;top:50%;-webkit-transform:translate(-50%,-50%);transform:translate(-50%,-50%);font-size:32px;line-height:1}
+#sun{position:absolute;top:50%;-webkit-transform:translate(-50%,-52%);transform:translate(-50%,-52%);font-size:70px;line-height:1;
+  -webkit-filter:drop-shadow(0 3px 4px rgba(59,47,74,.3));filter:drop-shadow(0 3px 4px rgba(59,47,74,.3))}
+#car{font-size:58px;line-height:1;text-align:center}
+#labels{display:flex;justify-content:space-between;gap:12px;font-size:14px;font-weight:700;color:var(--ink-soft)}
+#labels i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px}
+#departTxt{font-size:14px;font-weight:800;color:var(--ink-soft);text-align:center;white-space:nowrap}
 
 /* ---------- Confettis / messages ---------- */
 #fx{position:fixed;top:0;left:0;width:0;height:0;pointer-events:none;z-index:50}
@@ -207,21 +212,17 @@ input:focus{outline:none;border-color:var(--go)}
       <div id="badges"></div>
     </section>
 
-    <aside id="clock">
-      <svg id="disc" viewBox="0 0 200 216" role="img" aria-label="Temps restant avant de partir">
-        <text x="100" y="24" text-anchor="middle" font-size="24">🚗</text>
-        <circle cx="100" cy="122" r="90" fill="#fff"/>
-        <g id="ticks" fill="#3B2F4A"></g>
-        <path id="wGreen" fill="#34B37E"/>
-        <path id="wOrange" fill="#FF9838"/>
-        <text id="iPlay" text-anchor="middle" font-size="24" dy=".35em">🧸</text>
-        <text id="iShoe" text-anchor="middle" font-size="18" dy=".35em">👟</text>
-        <circle cx="100" cy="122" r="7" fill="#3B2F4A"/>
-      </svg>
-      <div id="legend" aria-hidden="true">
-        <span><i style="background:#34B37E"></i>🧸</span>
-        <span><i style="background:#FF9838"></i>👟🧥</span>
-        <span>🚗</span>
+    <aside id="clock" aria-label="Le temps avant de partir">
+      <div id="track">
+        <div id="bar"><div id="zGreen"></div><div id="zOrange"></div><div id="past"></div></div>
+        <span class="ico" id="iPlay">🧸</span>
+        <span class="ico" id="iShoe">👟</span>
+        <span id="sun">☀️</span>
+      </div>
+      <div id="car">🚗</div>
+      <div id="labels">
+        <span><i style="background:#34B37E"></i><span id="lblGreen"></span></span>
+        <span id="lblOrangeWrap"><i style="background:#FF9838"></i>Chaussures et manteau</span>
       </div>
       <div id="departTxt"></div>
     </aside>
@@ -239,8 +240,7 @@ input:focus{outline:none;border-color:var(--go)}
   var LS_S = 'monmatin.settings.v1';
   var LS_P = 'monmatin.progress.v1';
   var MAX_STEPS = 8;
-  var DISC_MIN = 60;            // le disque entier = 60 minutes
-  var CX = 100, CY = 122, R = 78;
+  var TRACK_MIN = 60;           // le chemin entier = 60 minutes
 
   var DEFAULTS = {
     name: '',
@@ -363,9 +363,6 @@ input:focus{outline:none;border-color:var(--go)}
 
   function renderSteps() {
     $('hello').textContent = 'Bonjour' + (S.name ? ' ' + S.name : '') + ' ☀️';
-    var n = S.steps.length;
-    var cols = n <= 3 ? n : n === 4 ? 2 : n <= 6 ? 3 : 4;
-    stepsEl.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
     var nextFound = false, html = '', stars = '';
     S.steps.forEach(function (s, i) {
       var d = isDone(s.id), cls = 'card';
@@ -379,13 +376,16 @@ input:focus{outline:none;border-color:var(--go)}
     });
     stepsEl.innerHTML = html;
     $('stars').innerHTML = stars;
-    $('departTxt').textContent = 'Départ à ' + niceTime(S.depart);
+    $('departTxt').textContent = niceTime(S.depart);
     layout();
   }
 
   /* Taille des images selon la place disponible dans chaque carte */
   function layout() {
-    var cards = stepsEl.children;
+    var cards = stepsEl.children, n = cards.length;
+    var wide = window.innerWidth > window.innerHeight;
+    var cols = wide ? (n <= 4 ? n : Math.ceil(n / 2)) : (n <= 1 ? 1 : n <= 6 ? 2 : 3);
+    stepsEl.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
     for (var i = 0; i < cards.length; i++) {
       var r = cards[i].getBoundingClientRect();
       if (!r.width) continue;
@@ -423,39 +423,30 @@ input:focus{outline:none;border-color:var(--go)}
     if (b) toggle(b.getAttribute('data-id'));
   });
 
-  /* ---------- Horloge visuelle ---------- */
-  function pt(deg, r) { var a = (deg - 90) * Math.PI / 180; return [CX + r * Math.cos(a), CY + r * Math.sin(a)]; }
-  function wedge(a0, a1) {
-    if (a1 - a0 < 0.05) return '';
-    a1 = Math.min(a1, a0 + 359.99);
-    var p0 = pt(a0, R), p1 = pt(a1, R);
-    return 'M' + CX + ' ' + CY + 'L' + p0[0].toFixed(2) + ' ' + p0[1].toFixed(2) +
-      'A' + R + ' ' + R + ' 0 ' + (a1 - a0 > 180 ? 1 : 0) + ' 1 ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2) + 'Z';
-  }
-  function place(el, a0, a1, minSpan) {
-    if (a1 - a0 < minSpan) { el.style.display = 'none'; return; }
-    var p = pt((a0 + a1) / 2, R * 0.62);
-    el.style.display = ''; el.setAttribute('x', p[0].toFixed(1)); el.setAttribute('y', p[1].toFixed(1));
-  }
-  (function ticks() {
-    var h = '';
-    for (var i = 0; i < 12; i++) { var p = pt(i * 30, 84.5); h += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="' + (i % 3 ? 1.4 : 2.4) + '" opacity="' + (i % 3 ? .3 : .55) + '"/>'; }
-    $('ticks').innerHTML = h;
-  })();
-
-  function drawDisc(rm) {
-    var cap = Math.max(0, Math.min(rm, DISC_MIN)), b = Math.min(S.buffer, DISC_MIN);
-    var oEnd = Math.min(cap, b) * 6, gEnd = cap * 6;
-    $('wOrange').setAttribute('d', wedge(0, oEnd));
-    $('wGreen').setAttribute('d', cap > b ? wedge(b * 6, gEnd) : '');
-    place($('iShoe'), 0, oEnd, 20);
-    place($('iPlay'), b * 6, cap > b ? gEnd : b * 6, 28);
+  /* ---------- Chemin du temps : le soleil avance vers la voiture ---------- */
+  function drawTrack(rm) {
+    var b = Math.min(S.buffer, TRACK_MIN);
+    var p = Math.max(0, Math.min(1, (TRACK_MIN - rm) / TRACK_MIN));   // position du soleil (0 à 1)
+    var og = 1 - b / TRACK_MIN;                                        // début de la zone orange
+    $('zGreen').style.width = og * 100 + '%';
+    $('zOrange').style.width = (1 - og) * 100 + '%';
+    $('past').style.width = p * 100 + '%';
+    $('sun').style.left = p * 100 + '%';
+    var play = $('iPlay'), shoe = $('iShoe');
+    if (og - p > 0.12) { play.style.display = ''; play.style.left = (p + og + 0.03) / 2 * 100 + '%'; } else play.style.display = 'none';
+    var o0 = Math.max(p + 0.04, og);
+    if (1 - o0 > 0.035) { shoe.style.display = ''; shoe.style.left = (o0 + 1) / 2 * 100 + '%'; } else shoe.style.display = 'none';
+    $('lblOrangeWrap').style.display = b > 0 ? '' : 'none';
+    var left = Math.ceil(rm - b);
+    $('lblGreen').textContent = rm <= 0 ? '' : left > 0
+      ? (view === 'play' ? 'Temps de jeu : ' : 'Avant les chaussures : ') + (rm > TRACK_MIN ? 'plus de ' + (TRACK_MIN - b) : left) + ' min'
+      : 'Départ dans ' + Math.ceil(rm) + ' min';
   }
 
   /* ---------- Quel écran montrer ? ---------- */
   var VIEWS = {
-    play:  { e: '🧸',   t: 'Tu peux jouer !',                 s: 'Quand le vert a disparu, on met les chaussures.', v: 'Bravo ! Tu peux jouer !' },
-    shoes: { e: '👟🧥', t: 'On met les chaussures et le manteau', s: 'Quand l’orange a disparu, on part.',          v: 'C’est l’heure de mettre les chaussures et le manteau.' },
+    play:  { e: '🧸',   t: 'Tu peux jouer !',                 s: 'Quand le soleil arrive aux chaussures, on se prépare.', v: 'Bravo ! Tu peux jouer !' },
+    shoes: { e: '👟🧥', t: 'On met les chaussures et le manteau', s: 'Quand le soleil arrive à la voiture, on part.',          v: 'C’est l’heure de mettre les chaussures et le manteau.' },
     go:    { e: '🚗',   t: 'C’est l’heure de partir !',       s: 'Bonne journée !',                                 v: 'C’est l’heure de partir ! Bonne journée !' }
   };
   var view = null;
@@ -484,7 +475,7 @@ input:focus{outline:none;border-color:var(--go)}
         }
       }
     }
-    drawDisc(rm);
+    drawTrack(rm);
   }
 
   /* ---------- Réglages parents ---------- */
@@ -502,7 +493,7 @@ input:focus{outline:none;border-color:var(--go)}
           '<div class="row"><button class="btn sq" data-act="t-" aria-label="5 minutes plus tôt">−5</button>' +
           '<input id="f-time" type="time" value="' + esc(S.depart) + '">' +
           '<button class="btn sq" data-act="t+" aria-label="5 minutes plus tard">+5</button></div>' +
-          '<small>Le disque entier représente 60 minutes. Le vert, c’est le temps avant de se préparer à partir.</small></div>' +
+          '<small>Le soleil avance sur le chemin jusqu’à la voiture. Le chemin entier représente 60 minutes.</small></div>' +
         '<div class="field"><span class="lab">Temps pour les chaussures et le manteau (zone orange)</span>' +
           '<div class="row"><button class="btn sq" data-act="b-" aria-label="Moins">−</button><output id="f-buf"></output>' +
           '<button class="btn sq" data-act="b+" aria-label="Plus">+</button></div></div>' +
