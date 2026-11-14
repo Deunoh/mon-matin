@@ -8,7 +8,7 @@ La routine du matin en images, pour les enfants qui ne savent pas encore lire l'
   - tant qu'il est dans le **vert 🧸**, on a le temps (et on peut jouer quand tout est fait),
   - quand il arrive dans l'**orange 👟**, on met les chaussures et le manteau,
   - quand il arrive à la **voiture**, on part.
-  - Le chemin entier représente 60 minutes.
+  - Le personnage part du début du chemin à l'ouverture de l'app le matin. S'il reste plus d'une heure avant le départ, il attend au début.
 
 ## Réglages (parents)
 

@@ -241,7 +241,8 @@ input:focus{outline:none;border-color:var(--go)}
   var LS_S = 'monmatin.settings.v1';
   var LS_P = 'monmatin.progress.v1';
   var MAX_STEPS = 8;
-  var TRACK_MIN = 60;           // le chemin entier = 60 minutes
+  var TRACK_MAX = 60;           // le chemin représente au plus 60 minutes
+  var TRACK_MIN = 10;           // et au moins 10 minutes
 
   var DEFAULTS = {
     name: '',
@@ -285,6 +286,7 @@ input:focus{outline:none;border-color:var(--go)}
   if (!S.steps || !S.steps.length) S.steps = JSON.parse(JSON.stringify(DEFAULTS.steps));
   var P = load(LS_P) || {};
   if (P.date !== dayKey(now()) || !P.done) P = { date: dayKey(now()), done: [] };
+  if (!P.start || P.start > now().getTime()) { P.start = now().getTime(); store(LS_P, P); }
 
   function saveS() { store(LS_S, S); }
   function saveP() { store(LS_P, P); }
@@ -427,10 +429,15 @@ input:focus{outline:none;border-color:var(--go)}
   });
 
   /* ---------- Chemin du temps : le soleil avance vers la voiture ---------- */
+  /* Durée du chemin : du moment où l'app a été ouverte ce matin jusqu'au départ (entre 10 et 60 min) */
+  function span(rm) {
+    var sinceStart = (now().getTime() - P.start) / 60000;
+    return Math.max(TRACK_MIN, Math.min(TRACK_MAX, rm + sinceStart));
+  }
   function drawTrack(rm) {
-    var b = Math.min(S.buffer, TRACK_MIN);
-    var p = Math.max(0, Math.min(1, (TRACK_MIN - rm) / TRACK_MIN));   // position du soleil (0 à 1)
-    var og = 1 - b / TRACK_MIN;                                        // début de la zone orange
+    var total = span(rm), b = Math.min(S.buffer, total);
+    var p = Math.max(0, Math.min(1, (total - rm) / total));           // position du personnage (0 à 1)
+    var og = 1 - b / total;                                            // début de la zone orange
     $('zGreen').style.width = og * 100 + '%';
     $('zOrange').style.width = (1 - og) * 100 + '%';
     $('past').style.width = p * 100 + '%';
@@ -443,7 +450,7 @@ input:focus{outline:none;border-color:var(--go)}
     $('lblOrangeWrap').style.display = b > 0 ? '' : 'none';
     var left = Math.ceil(rm - b);
     $('lblGreen').textContent = rm <= 0 ? '' : left > 0
-      ? (view === 'play' ? 'Temps de jeu : ' : 'Avant les chaussures : ') + (rm > TRACK_MIN ? 'plus de ' + (TRACK_MIN - b) : left) + ' min'
+      ? (view === 'play' ? 'Temps de jeu : ' : 'Avant les chaussures : ') + left + ' min'
       : 'Départ dans ' + Math.ceil(rm) + ' min';
   }
 
@@ -457,7 +464,7 @@ input:focus{outline:none;border-color:var(--go)}
 
   function tick(fromTap) {
     var n = now();
-    if (P.date !== dayKey(n)) { P = { date: dayKey(n), done: [] }; saveP(); renderSteps(); }
+    if (P.date !== dayKey(n)) { P = { date: dayKey(n), done: [], start: n.getTime() }; saveP(); renderSteps(); }
     var rm = remaining();
     var v = rm <= 0 ? 'go' : !allDone() ? 'steps' : rm <= S.buffer ? 'shoes' : 'play';
     if (v !== view) {
@@ -492,10 +499,10 @@ input:focus{outline:none;border-color:var(--go)}
   }
 
   /* ---------- Réglages parents ---------- */
-  var pickFor = null;
+  var pickFor = null, departBefore = null;
 
   function openSettings(welcome) {
-    pickFor = null;
+    pickFor = null; departBefore = S.depart;
     panel.innerHTML =
       '<div class="sheet" role="dialog" aria-label="Réglages parents">' +
         '<div class="sheet-head"><h2>Réglages parents</h2><button class="btn primary" data-act="close">Terminé</button></div>' +
@@ -506,7 +513,7 @@ input:focus{outline:none;border-color:var(--go)}
           '<div class="row"><button class="btn sq" data-act="t-" aria-label="5 minutes plus tôt">−5</button>' +
           '<input id="f-time" type="time" value="' + esc(S.depart) + '">' +
           '<button class="btn sq" data-act="t+" aria-label="5 minutes plus tard">+5</button></div>' +
-          '<small>Le personnage avance sur le chemin jusqu’à la voiture. Le chemin entier représente 60 minutes.</small></div>' +
+          '<small>Le personnage part du début du chemin quand on ouvre l’app le matin, et arrive à la voiture à l’heure du départ. S’il reste plus d’une heure, il attend au début.</small></div>' +
         '<div class="field"><span class="lab">Temps pour les chaussures et le manteau (zone orange)</span>' +
           '<div class="row"><button class="btn sq" data-act="b-" aria-label="Moins">−</button><output id="f-buf"></output>' +
           '<button class="btn sq" data-act="b+" aria-label="Plus">+</button></div></div>' +
@@ -524,6 +531,7 @@ input:focus{outline:none;border-color:var(--go)}
   }
   function closeSettings() {
     S.steps.forEach(function (s) { if (!s.t.trim()) s.t = 'Étape'; });
+    if (S.depart !== departBefore) { P.start = now().getTime(); saveP(); }
     saveS(); panel.hidden = true; panel.innerHTML = '';
     renderSteps(); view = view === 'steps' ? 'steps' : null; tick(true);
   }
@@ -558,7 +566,7 @@ input:focus{outline:none;border-color:var(--go)}
     if (act === 't-' || act === 't+') { S.depart = toHHMM(toMin(S.depart) + (act === 't+' ? 5 : -5)); $('f-time').value = S.depart; }
     else if (act === 'b-' || act === 'b+') { S.buffer = Math.max(0, Math.min(20, S.buffer + (act === 'b+' ? 1 : -1))); showBuf(); }
     else if (act === 'marker') { S.marker = b.getAttribute('data-e'); renderMarkers(); }
-    else if (act === 'reset') { P.done = []; saveP(); toast('C’est reparti !'); }
+    else if (act === 'reset') { P.done = []; P.start = now().getTime(); saveP(); toast('C’est reparti !'); }
     else {
       if (act === 'add') { S.steps.push({ id: 's' + Date.now().toString(36), e: '⭐', t: 'Nouvelle étape' }); pickFor = S.steps.length - 1; }
       else if (act === 'del') { S.steps.splice(i, 1); pickFor = null; }
