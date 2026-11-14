@@ -175,6 +175,7 @@ input:focus{outline:none;border-color:var(--go)}
 .picker{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .picker button{width:44px;height:44px;font-size:26px;border-radius:12px}
 .picker button:active{background:var(--sky-top)}
+.picker button.sel{background:var(--go-soft);box-shadow:inset 0 0 0 3px var(--go)}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:800;font-size:15px;padding:6px 0}
 .switch input{-webkit-appearance:none;appearance:none;width:56px;height:32px;border-radius:999px;background:rgba(59,47,74,.2);position:relative;transition:background .2s;flex:0 0 auto;margin:0}
 .switch input::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
@@ -246,6 +247,7 @@ input:focus{outline:none;border-color:var(--go)}
     name: '',
     depart: '08:15',
     buffer: 5,
+    marker: '☀️',
     sound: true,
     voice: true,
     steps: [
@@ -255,6 +257,7 @@ input:focus{outline:none;border-color:var(--go)}
       { id: 'coiffe', e: '🎀', t: 'Se coiffer' }
     ]
   };
+  var MARKERS = ['☀️','⭐','🐥','🐰','🐱','🐶','🦄','🐢','🦋','🐞','👧','👦','🚀','🎈'];
   var EMOJIS = ['🥣','🥐','🥛','🍎','🍌','👕','👗','👖','🧦','👟','🧥','🧢','🪥','🧼','🚿','🛁','🚽','🧴',
                 '💇‍♀️','💇‍♂️','🎀','👓','🛏️','🎒','📚','💊','🐶','🐱','🌱','🧸','🎨','🚗','🚲','🚌','🏫','❤️'];
 
@@ -431,6 +434,7 @@ input:focus{outline:none;border-color:var(--go)}
     $('zGreen').style.width = og * 100 + '%';
     $('zOrange').style.width = (1 - og) * 100 + '%';
     $('past').style.width = p * 100 + '%';
+    if ($('sun').textContent !== S.marker) $('sun').textContent = S.marker;
     $('sun').style.left = p * 100 + '%';
     var play = $('iPlay'), shoe = $('iShoe');
     if (og - p > 0.12) { play.style.display = ''; play.style.left = (p + og + 0.03) / 2 * 100 + '%'; } else play.style.display = 'none';
@@ -445,8 +449,8 @@ input:focus{outline:none;border-color:var(--go)}
 
   /* ---------- Quel écran montrer ? ---------- */
   var VIEWS = {
-    play:  { e: '🧸',   t: 'Tu peux jouer !',                 s: 'Quand le soleil arrive aux chaussures, on se prépare.', v: 'Bravo ! Tu peux jouer !' },
-    shoes: { e: '👟🧥', t: 'On met les chaussures et le manteau', s: 'Quand le soleil arrive à la voiture, on part.',          v: 'C’est l’heure de mettre les chaussures et le manteau.' },
+    play:  { e: '🧸',   t: 'Tu peux jouer !',                 s: 'Quand %M arrive aux chaussures, on se prépare.', v: 'Bravo ! Tu peux jouer !' },
+    shoes: { e: '👟🧥', t: 'On met les chaussures et le manteau', s: 'Quand %M arrive à la voiture, on part.',          v: 'C’est l’heure de mettre les chaussures et le manteau.' },
     go:    { e: '🚗',   t: 'C’est l’heure de partir !',       s: 'Bonne journée !',                                 v: 'C’est l’heure de partir ! Bonne journée !' }
   };
   var view = null;
@@ -464,7 +468,7 @@ input:focus{outline:none;border-color:var(--go)}
         var c = VIEWS[v];
         $('bigEmo').textContent = c.e;
         $('bigTitle').textContent = c.t;
-        $('bigSub').textContent = v === 'go' && S.name ? 'Bonne journée ' + S.name + ' !' : c.s;
+        $('bigSub').textContent = v === 'go' && S.name ? 'Bonne journée ' + S.name + ' !' : c.s.replace('%M', S.marker === '☀️' ? 'le soleil' : S.marker);
         $('badges').innerHTML = v === 'go' ? '' : S.steps.map(function (s) {
           return '<button data-id="' + esc(s.id) + '" aria-label="' + esc(s.t) + ' : annuler">' + esc(s.e) + '</button>';
         }).join('');
@@ -493,10 +497,11 @@ input:focus{outline:none;border-color:var(--go)}
           '<div class="row"><button class="btn sq" data-act="t-" aria-label="5 minutes plus tôt">−5</button>' +
           '<input id="f-time" type="time" value="' + esc(S.depart) + '">' +
           '<button class="btn sq" data-act="t+" aria-label="5 minutes plus tard">+5</button></div>' +
-          '<small>Le soleil avance sur le chemin jusqu’à la voiture. Le chemin entier représente 60 minutes.</small></div>' +
+          '<small>Le personnage avance sur le chemin jusqu’à la voiture. Le chemin entier représente 60 minutes.</small></div>' +
         '<div class="field"><span class="lab">Temps pour les chaussures et le manteau (zone orange)</span>' +
           '<div class="row"><button class="btn sq" data-act="b-" aria-label="Moins">−</button><output id="f-buf"></output>' +
           '<button class="btn sq" data-act="b+" aria-label="Plus">+</button></div></div>' +
+        '<div class="field"><span class="lab">Personnage qui avance sur le chemin</span><div class="picker" id="f-marker" style="border:0;margin:0;padding:0"></div></div>' +
         '<div class="field"><span class="lab">Étapes du matin</span><ul id="f-steps"></ul>' +
           '<button class="btn" data-act="add" id="f-add">+ Ajouter une étape</button></div>' +
         '<div class="field">' +
@@ -505,13 +510,18 @@ input:focus{outline:none;border-color:var(--go)}
         '<div class="field"><button class="btn danger" data-act="reset">↺ Recommencer la matinée</button>' +
           '<small>Les étapes se remettent à zéro toutes seules chaque jour.<br>Astuce iPad : ajoutez la page à l’écran d’accueil (Partager → « Sur l’écran d’accueil ») et réglez Verrouillage auto sur « Jamais » pour que l’écran reste allumé.</small></div>' +
       '</div>';
-    renderStepList(); showBuf();
+    renderStepList(); showBuf(); renderMarkers();
     panel.hidden = false; panel.scrollTop = 0;
   }
   function closeSettings() {
     S.steps.forEach(function (s) { if (!s.t.trim()) s.t = 'Étape'; });
     saveS(); panel.hidden = true; panel.innerHTML = '';
     renderSteps(); view = view === 'steps' ? 'steps' : null; tick(true);
+  }
+  function renderMarkers() {
+    $('f-marker').innerHTML = MARKERS.map(function (e) {
+      return '<button data-act="marker" data-e="' + e + '"' + (e === S.marker ? ' class="sel" aria-pressed="true"' : '') + '>' + e + '</button>';
+    }).join('');
   }
   function showBuf() { $('f-buf').textContent = S.buffer + ' min'; }
   function renderStepList() {
@@ -538,6 +548,7 @@ input:focus{outline:none;border-color:var(--go)}
     if (act === 'close') { closeSettings(); return; }
     if (act === 't-' || act === 't+') { S.depart = toHHMM(toMin(S.depart) + (act === 't+' ? 5 : -5)); $('f-time').value = S.depart; }
     else if (act === 'b-' || act === 'b+') { S.buffer = Math.max(0, Math.min(20, S.buffer + (act === 'b+' ? 1 : -1))); showBuf(); }
+    else if (act === 'marker') { S.marker = b.getAttribute('data-e'); renderMarkers(); }
     else if (act === 'reset') { P.done = []; saveP(); toast('C’est reparti !'); }
     else {
       if (act === 'add') { S.steps.push({ id: 's' + Date.now().toString(36), e: '⭐', t: 'Nouvelle étape' }); pickFor = S.steps.length - 1; }

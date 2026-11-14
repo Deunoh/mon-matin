@@ -1,6 +1,6 @@
 // Mode hors-ligne : on essaie d'abord le réseau (pour avoir la dernière version),
 // et si l'iPad n'a pas de connexion on sert la copie gardée en cache.
-var CACHE = 'mon-matin-v2';
+var CACHE = 'mon-matin-v3';
 var FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-512.png'];
 
 self.addEventListener('install', function (e) {
